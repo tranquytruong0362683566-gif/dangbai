@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng Reels (Ver 4 - Hoàn Chỉnh Fix Lỗi Comment)</title>
+  <title>Đăng Reels (Ver 5 - Vòng Lặp Tự Động Liên Tục)</title>
   <style>
     :root {
       --bg-main: #f1f5f9;
@@ -15,6 +15,7 @@
       --primary-hover: #1e40af;
       --danger: #ef4444;
       --success: #10b981;
+      --warning: #ea580c;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -62,9 +63,8 @@
     .right-col .form-group { margin-bottom: 16px; }
 
     .window-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--border-color); background: #fff; }
-    .btn-submit { background: #1d4ed8; color: white; border: none; padding: 10px 24px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+    .btn-submit { background: #1d4ed8; color: white; border: none; padding: 10px 24px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; transition: background 0.3s; }
     .btn-submit:hover { background: #1e40af; }
-    .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
 
     .status-box { padding: 10px 12px; border-radius: 4px; font-size: 13px; margin-top: 10px; display: none; line-height: 1.5; }
     .status-box.show { display: block; }
@@ -84,7 +84,7 @@
 
   <div class="window-modal">
     <div class="window-header">
-      <div class="window-title">Đăng Reels (Ver 4 - Random Video & Auto Comment)</div>
+      <div class="window-title">Đăng Reels (Ver 5 - Vòng Lặp Liên Tục Tự Động)</div>
       <button class="close-btn">&times;</button>
     </div>
 
@@ -140,13 +140,6 @@
                 <span>giây (Nên để delay để FB kịp xử lý video)</span>
               </div>
             </div>
-
-            <div class="form-group" style="margin-top: 15px;">
-              <label>Thứ tự bốc video:</label>
-              <select style="margin-top: 4px;" disabled>
-                <option>Ngẫu nhiên (Random)</option>
-              </select>
-            </div>
           </div>
 
           <div class="right-col">
@@ -157,24 +150,15 @@
             </div>
 
             <div class="form-group" style="margin-top: 20px;">
-              <div class="form-row-inline">
-                <label>Delay Min(s):</label>
-                <input type="number" value="3" style="width: 120px;">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <div class="form-row-inline">
-                <label>Delay Max(s):</label>
-                <input type="number" value="5" style="width: 120px;">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <div class="form-row-inline">
-                <label>Giới hạn số bài/1 page:</label>
-                <input type="number" value="1" style="width: 120px;">
-              </div>
+              <label style="color: var(--warning); font-weight: bold;">⏱️ Chu kỳ lặp lại liên tục:</label>
+              <select id="loopInterval" style="margin-top: 6px;">
+                <option value="30">30 phút (Mỗi nửa tiếng đăng 1 bài)</option>
+                <option value="60" selected>60 phút (Mỗi 1 tiếng đăng 1 bài)</option>
+                <option value="1">1 phút (Dành cho việc chạy thử nghiệm)</option>
+              </select>
+              <p style="color: var(--text-muted); font-size: 11px; margin-top: 6px; line-height: 1.4;">
+                Hệ thống sẽ bốc ngẫu nhiên 1 video trong kho, đăng lên, tự động thả comment, và lặp lại liên tục sau khoảng thời gian được thiết lập.
+              </p>
             </div>
           </div>
         </div>
@@ -188,12 +172,10 @@
 
     <div class="window-footer">
       <div>
-        <label class="checkbox-label" style="color: var(--danger); font-weight: bold;">
-          <input type="checkbox"> ⏰ Hẹn Giờ
-        </label>
+        <span style="color: var(--text-muted); font-weight: bold;">Chế độ: Chạy lặp lại liên tục không giới hạn</span>
       </div>
       <div>
-        <button class="btn-submit" id="btnSubmit">Bắt đầu đăng Reels (1 trang)</button>
+        <button class="btn-submit" id="btnSubmit">Bắt đầu đăng liên tục</button>
       </div>
     </div>
   </div>
@@ -204,6 +186,10 @@
 
     let currentAccessToken = null;
     let currentPages = [];
+    
+    // Quản lý trạng thái lặp liên tục
+    let isLooping = false;
+    let loopTimeoutId = null;
 
     // ================= KHỞI TẠO SDK =================
     window.fbAsyncInit = function () {
@@ -291,6 +277,7 @@
         document.getElementById('postView').style.display = 'none';
         document.getElementById('loginView').style.display = 'block';
         document.getElementById('loginStatus').className = 'status-box';
+        stopLoop();
       });
     });
 
@@ -298,12 +285,76 @@
     document.getElementById('videoFile').addEventListener('change', function () {
       const count = this.files.length;
       document.getElementById('fileText').textContent = count > 0 
-        ? `✔️ Đã nạp ${count} video (Sẽ chọn ngẫu nhiên 1 file khi đăng)` 
+        ? `✔️ Đã nạp ${count} video (Sẽ chọn ngẫu nhiên mỗi lượt đăng)` 
         : 'Chưa có video nào được chọn';
     });
 
-    // ================= LOGIC UPLOAD & COMMENT =================
+    // ================= ĐIỀU KHIỂN BẬT / TẮT VÒNG LẶP LIÊN TỤC =================
     document.getElementById('btnSubmit').addEventListener('click', async () => {
+      if (isLooping) {
+        stopLoop();
+      } else {
+        await startLoop();
+      }
+    });
+
+    function stopLoop() {
+      isLooping = false;
+      clearTimeout(loopTimeoutId);
+      
+      const btn = document.getElementById('btnSubmit');
+      btn.textContent = 'Bắt đầu đăng liên tục';
+      btn.style.background = 'var(--primary)';
+      
+      const statusEl = document.getElementById('postStatus');
+      statusEl.className = 'status-box show err';
+      statusEl.textContent = '🛑 Đã chủ động dừng tiến trình chạy lặp lại liên tục.';
+      
+      const progressWrap = document.getElementById('progressWrap');
+      progressWrap.className = 'progress-bar-wrap';
+    }
+
+    async function startLoop() {
+      const pageId = document.getElementById('pageSelect').value;
+      const page = currentPages.find(p => p.id === pageId);
+      const fileInput = document.getElementById('videoFile');
+      const commentContent = document.getElementById('commentContent').value.trim();
+      const isEnableComment = document.getElementById('enableComment').checked;
+
+      if (!page) { alert('⚠️ Vui lòng cấu hình tài khoản & chọn Page.'); return; }
+      if (fileInput.files.length === 0) { alert('⚠️ Vui lòng chọn ít nhất 1 tệp video để hệ thống bốc ngẫu nhiên.'); return; }
+      if (isEnableComment && !commentContent) { alert('⚠️ Bạn đã bật tính năng Comment tự động nhưng chưa nhập nội dung Comment.'); return; }
+
+      isLooping = true;
+      
+      const btn = document.getElementById('btnSubmit');
+      btn.textContent = '🔴 Dừng chạy liên tục';
+      btn.style.background = 'var(--danger)';
+
+      await triggerNextPost();
+    }
+
+    // Cơ chế lập lịch đệ quy có kiểm tra trạng thái an toàn
+    async function triggerNextPost() {
+      if (!isLooping) return;
+
+      // Thực thi quy trình bốc và đăng bài
+      await runPostSequence();
+      
+      if (!isLooping) return;
+
+      const intervalMins = parseInt(document.getElementById('loopInterval').value) || 60;
+      const statusEl = document.getElementById('postStatus');
+      
+      statusEl.className = 'status-box show loading';
+      statusEl.innerHTML += `<br><br>✅ <b>Chu kỳ hoàn tất!</b><br>⏳ Hệ thống bắt đầu đếm ngược <b>${intervalMins} phút</b> để đăng bài tiếp theo...`;
+
+      // Thiết lập chu kỳ chạy tiếp theo
+      loopTimeoutId = setTimeout(triggerNextPost, intervalMins * 60 * 1000);
+    }
+
+    // ================= QUY TRÌNH ĐĂNG 1 BÀI & CƠ CHẾ COMMENT =================
+    async function runPostSequence() {
       const pageId = document.getElementById('pageSelect').value;
       const page = currentPages.find(p => p.id === pageId);
       const fileInput = document.getElementById('videoFile');
@@ -312,27 +363,19 @@
       const commentDelay = parseInt(document.getElementById('commentDelay').value) || 0;
 
       const statusEl = document.getElementById('postStatus');
-      const btn = document.getElementById('btnSubmit');
       const progressWrap = document.getElementById('progressWrap');
       const progressBar = document.getElementById('progressBar');
 
-      if (!page) { alert('⚠️ Vui lòng cấu hình tài khoản & chọn Page.'); return; }
-      if (fileInput.files.length === 0) { alert('⚠️ Vui lòng chọn ít nhất 1 tệp video để hệ thống bốc ngẫu nhiên.'); return; }
-      if (isEnableComment && !commentContent) { alert('⚠️ Bạn đã bật tính năng Comment tự động nhưng chưa nhập nội dung Comment.'); return; }
-
-      // 1. Chọn ngẫu nhiên 1 video từ tập files
+      // 1. Bốc ngẫu nhiên 1 video từ danh sách file đã chọn
       const randomIndex = Math.floor(Math.random() * fileInput.files.length);
       const selectedVideo = fileInput.files[randomIndex];
       
-      // 2. Lấy tên file làm tiêu đề (Loại bỏ đuôi .mp4, .mov...)
+      // 2. Tách tên file làm tiêu đề Reels
       const videoTitle = selectedVideo.name.replace(/\.[^/.]+$/, "");
-
       const pageAccessToken = page.access_token;
 
-      btn.disabled = true;
-      btn.textContent = '⏳ Đang tiến hành đăng...';
       statusEl.className = 'status-box show loading';
-      statusEl.innerHTML = `Đang tải video ngẫu nhiên: <b>"${videoTitle}"</b> lên Page...`;
+      statusEl.innerHTML = `🚀 [Lượt mới] Đang bốc ngẫu nhiên video: <b>"${videoTitle}"</b> để tải lên...`;
       progressWrap.className = 'progress-bar-wrap show';
       progressBar.style.width = '10%';
 
@@ -347,17 +390,17 @@
         const initData = await initRes.json();
         if (initData.error) throw new Error("Lỗi Phase 1: " + initData.error.message);
 
-        // Lấy video_id ngay từ Phase 1
         const videoId = initData.video_id; 
-
         progressBar.style.width = '20%';
 
-        // [PHASE 2] - Truyền dữ liệu (Băm nhỏ file - Chunking)
+        // [PHASE 2] - Truyền dữ liệu dạng Chunking (băm file lớn)
         let startOffset = parseInt(initData.start_offset);
         let endOffset = parseInt(initData.end_offset);
         let sessionId = initData.upload_session_id;
 
         while (startOffset < selectedVideo.size) {
+          if (!isLooping) return; // Kiểm tra ngắt giữa chừng khi user bấm Dừng
+
           const chunk = selectedVideo.slice(startOffset, endOffset);
           
           const uploadForm = new FormData();
@@ -379,7 +422,7 @@
           progressBar.style.width = `${progressPercent}%`;
         }
 
-        // [PHASE 3] - Hoàn tất (Gắn tên file làm Tiêu đề và Đăng)
+        // [PHASE 3] - Hoàn tất & Xuất bản bài viết
         const finishForm = new FormData();
         finishForm.append('upload_phase', 'finish');
         finishForm.append('upload_session_id', sessionId);
@@ -392,18 +435,21 @@
         if (finishData.error) throw new Error("Lỗi Phase 3: " + finishData.error.message);
 
         progressBar.style.width = '100%';
-        
-        // Tạo Link bài viết sử dụng videoId đã lấy được ở Phase 1
         const postLink = `https://www.facebook.com/${page.id}/videos/${videoId}/`;
 
-        // [PHASE 4] - Auto Comment
+        // [PHASE 4] - Tự động Comment sau khi đăng
         if (isEnableComment && commentContent) {
             statusEl.className = 'status-box show loading';
-            statusEl.innerHTML = `✅ Đã upload thành công!<br>⏳ Đang chờ <b>${commentDelay} giây</b> để Facebook xử lý và gắn Comment...`;
+            statusEl.innerHTML = `✅ Đã upload video thành công!<br>⏳ Đang chờ <b>${commentDelay} giây</b> để Facebook index bài đăng trước khi nhét comment...`;
             
-            await new Promise(resolve => setTimeout(resolve, commentDelay * 1000));
+            // Đếm ngược an toàn có kiểm tra lệnh Ngắt hệ thống liên tục
+            for (let i = 0; i < commentDelay; i++) {
+                if (!isLooping) return;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
             
-            statusEl.innerHTML = `⏳ Đang gửi comment...`;
+            if (!isLooping) return;
+            statusEl.innerHTML = `⏳ Đang gửi comment tự động vào bài viết...`;
             
             const commentRes = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${videoId}/comments`, {
                 method: 'POST',
@@ -415,32 +461,30 @@
             });
             const commentData = await commentRes.json();
             if (commentData.error) throw new Error("Lỗi khi Comment: " + commentData.error.message);
-
+            
             statusEl.className = 'status-box show ok';
             statusEl.innerHTML = `
-              🎉 <b>HOÀN TẤT TOÀN BỘ QUÁ TRÌNH!</b><br>
-              - Đã đăng Reels: <i>${videoTitle}</i><br>
+              🎉 <b>ĐĂNG THÀNH CÔNG!</b><br>
+              - Video: <i>${videoTitle}</i><br>
               - Đã thả comment tự động.<br>
               🔗 Link Reels: <a href="${postLink}" target="_blank" class="post-link">${postLink}</a>
             `;
         } else {
             statusEl.className = 'status-box show ok';
             statusEl.innerHTML = `
-              ✅ <b>ĐĂNG THÀNH CÔNG!</b><br>
-              - Video đăng: <i>${videoTitle}</i><br>
+              🎉 <b>ĐĂNG THÀNH CÔNG!</b><br>
+              - Video: <i>${videoTitle}</i><br>
               🔗 Link Reels: <a href="${postLink}" target="_blank" class="post-link">${postLink}</a>
             `;
         }
 
       } catch (err) {
+        // Nếu bị lỗi 1 bài, báo lỗi và chờ 5s rồi vẫn trả quy trình về Trigger Loop tiếp theo
         statusEl.className = 'status-box show err';
-        statusEl.textContent = `❌ Lỗi tiến trình: ${err.message}`;
-        progressWrap.className = 'progress-bar-wrap';
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Bắt đầu đăng Reels (1 trang)';
+        statusEl.textContent = `❌ Lỗi bài đăng hiện tại: ${err.message}`;
+        await new Promise(resolve => setTimeout(resolve, 5000));
       }
-    });
+    }
   </script>
 </body>
 </html>
