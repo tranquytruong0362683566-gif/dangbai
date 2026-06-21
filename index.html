@@ -3,402 +3,439 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FB Auto Post Tool</title>
+  <title>DMHREELS - All In One Facebook</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f1117; color: #e2e8f0;
-      min-height: 100vh; padding: 24px 16px;
+    /* ================= RESET & CƠ BẢN ================= */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+    body { background-color: #f0f4f8; color: #333; font-size: 14px; }
+    
+    /* ================= HEADER ================= */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #e8f0fe; padding: 10px 20px; border-bottom: 1px solid #d2e3fc;
     }
-    .wrap { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-left img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .user-info { font-size: 13px; }
+    .user-name { color: #1a73e8; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+    .expire-date { color: #d93025; font-size: 12px; margin-top: 3px; }
+    .header-title { color: #1a73e8; font-size: 20px; font-weight: 600; text-align: center; flex: 1; }
+    
+    /* ================= MAIN CONTAINER & TABLE ================= */
+    .container { padding: 20px; max-width: 1400px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+    
+    table { width: 100%; border-collapse: collapse; text-align: center; }
+    th, td { padding: 12px 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    th { background: #f8f9fa; font-weight: 600; color: #555; border-bottom: 2px solid #ddd; }
+    tbody tr:hover { background: #f1f5f9; cursor: context-menu; }
+    
+    .page-info { display: flex; align-items: center; gap: 10px; text-align: left; justify-content: flex-start; }
+    .page-info img { width: 32px; height: 32px; border-radius: 50%; }
+    .page-name { font-weight: 600; }
+    .badge { background: #ea4335; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; gap: 3px; }
+    
+    .table-footer { padding: 15px; display: flex; align-items: center; gap: 15px; background: #fafafa; border-top: 1px solid #eee; }
+    .table-footer select { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
 
-    .card { background: #1a1d2e; border: 1px solid #2d3148; border-radius: 14px; padding: 20px 22px; }
-
-    /* HEADER */
-    .header { display: flex; align-items: center; gap: 12px; }
-    .header h1 { font-size: 17px; font-weight: 700; color: #818cf8; text-transform: uppercase; }
-
-    /* EXT STATUS */
-    .ext-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      background: #0f1117; border: 1px solid #2d3148;
-      border-radius: 10px; padding: 10px 14px; font-size: 13px;
+    /* ================= CONTEXT MENU (CHUỘT PHẢI) ================= */
+    .context-menu {
+      position: absolute; background: #fff; border: 1px solid #ccc; border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 220px; z-index: 1000; display: none; padding: 5px 0;
     }
-    .ext-status { color: #94a3b8; }
-    .ext-status.ok { color: #34d399; }
-    .ext-status.err { color: #f87171; }
-    .btn-get-cookie {
-      background: #4f46e5; color: #fff; border: none;
-      border-radius: 7px; padding: 6px 14px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
+    .menu-item {
+      padding: 8px 15px; font-size: 13px; color: #333; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
     }
-    .btn-get-cookie:hover { background: #4338ca; }
-
-    /* FORM */
-    .section-title {
-      font-size: 11px; font-weight: 700; color: #94a3b8;
-      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;
-      display: flex; align-items: center; gap: 8px;
+    .menu-item:hover { background: #f0f0f0; }
+    .menu-item i { margin-right: 8px; width: 16px; text-align: center; }
+    .menu-divider { height: 1px; background: #eee; margin: 5px 0; }
+    
+    /* Sub Menu */
+    .has-submenu { position: relative; }
+    .submenu {
+      position: absolute; left: 100%; top: -10px; background: #fff; border: 1px solid #ccc;
+      border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 250px; display: none; padding: 5px 0; max-height: 400px; overflow-y: auto;
     }
-    .section-title::after { content: ''; flex: 1; height: 1px; background: #2d3148; }
+    .has-submenu:hover .submenu { display: block; }
 
-    .form-group { margin-bottom: 14px; }
-    label { display: block; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
-
-    input[type="text"], textarea {
-      width: 100%; background: #0f1117; border: 1px solid #2d3148;
-      border-radius: 9px; padding: 9px 12px;
-      font-size: 13px; font-family: inherit; color: #e2e8f0; resize: none;
+    /* ================= MODAL (POPUP) ================= */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 2000; display: none; justify-content: center; align-items: center;
     }
-    input[type="text"]:focus, textarea:focus { outline: none; border-color: #4f46e5; }
-    input::placeholder, textarea::placeholder { color: #475569; }
-    textarea { height: 80px; }
-
-    .cookie-row { display: flex; gap: 8px; }
-    .cookie-row input { flex: 1; font-family: monospace; font-size: 11px; }
-    .btn-paste {
-      background: #1e2235; color: #818cf8; border: 1px solid #2d3148;
-      border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    .modal {
+      background: #fff; border-radius: 8px; width: 800px; max-width: 95%;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2); display: flex; flex-direction: column;
     }
-    .btn-paste:hover { background: #2d3148; }
-
-    /* TABS */
-    .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
-    .tab {
-      flex: 1; padding: 9px; text-align: center;
-      background: #0f1117; border: 1px solid #2d3148;
-      border-radius: 9px; font-size: 13px; font-weight: 600;
-      color: #475569; cursor: pointer; transition: all 0.2s;
+    .modal-header {
+      padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;
     }
-    .tab.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
-
-    /* POST FORM */
-    .post-section { display: none; }
-    .post-section.active { display: block; }
-
-    /* SCHEDULE */
-    .schedule-row { display: flex; gap: 10px; }
-    .schedule-row .form-group { flex: 1; }
-
-    /* BUTTONS */
-    .btn-post {
-      width: 100%; background: #4f46e5; color: #fff; border: none;
-      border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
-      margin-top: 4px;
+    .modal-header h2 { font-size: 16px; margin: 0; }
+    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
+    .close-btn:hover { color: #f00; }
+    
+    .modal-body { padding: 20px; display: flex; gap: 20px; }
+    .col-left { flex: 6; } .col-right { flex: 4; }
+    
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+    
+    .flex-row { display: flex; gap: 10px; align-items: center; }
+    .flex-row-between { display: flex; justify-content: space-between; align-items: center; }
+    
+    textarea, input[type="text"], input[type="number"], select {
+      width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
     }
-    .btn-post:hover:not(:disabled) { background: #4338ca; }
-    .btn-post:disabled { background: #2d3148; color: #475569; cursor: not-allowed; }
+    textarea { height: 80px; resize: none; }
+    textarea:focus, input:focus, select:focus { outline: none; border-color: #1a73e8; }
+    
+    .inline-input { width: 60px !important; text-align: center; }
+    
+    .ai-badge { color: #1a73e8; font-weight: bold; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;}
+    
+    .file-input-wrapper { display: flex; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #f9f9f9; }
+    .file-btn { background: #e0e0e0; border: none; padding: 8px 12px; cursor: pointer; border-right: 1px solid #ccc; font-size: 13px; }
+    .file-text { padding: 8px 10px; font-size: 13px; color: #666; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* LOG */
-    .log-box {
-      background: #0f1117; border: 1px solid #2d3148; border-radius: 10px;
-      padding: 12px; max-height: 180px; overflow-y: auto;
-      font-family: monospace; font-size: 12px; line-height: 1.7;
+    .modal-footer {
+      padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 0 0 8px 8px;
     }
-    .log-box .log-ok { color: #34d399; }
-    .log-box .log-err { color: #f87171; }
-    .log-box .log-info { color: #94a3b8; }
-    .log-empty { color: #334155; font-style: italic; }
-
-    /* PROGRESS */
-    .progress-bar { width: 100%; height: 6px; background: #2d3148; border-radius: 3px; margin-top: 10px; overflow: hidden; }
-    .progress-fill { height: 100%; background: #4f46e5; border-radius: 3px; width: 0%; transition: width 0.3s; }
-
-    select {
-      width: 100%; background: #0f1117; border: 1px solid #2d3148;
-      border-radius: 9px; padding: 9px 12px;
-      font-size: 13px; color: #e2e8f0;
+    .btn-submit {
+      background: #1a73e8; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px;
     }
-    select:focus { outline: none; border-color: #4f46e5; }
+    .btn-submit:hover { background: #1557b0; }
+
+    /* Custom Checkbox */
+    input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
   </style>
 </head>
 <body>
-<div class="wrap">
 
   <!-- HEADER -->
-  <div class="card">
-    <div class="header">
-      <span style="font-size:26px">🤖</span>
-      <div>
-        <h1>FB Auto Post Tool</h1>
-        <div style="font-size:11px;color:#475569;margin-top:2px">Tự động đăng bài & Reels Facebook</div>
+  <header class="header">
+    <div class="header-left">
+      <img src="https://ui-avatars.com/api/?name=Trường&background=random" alt="Avatar">
+      <div class="user-info">
+        <div class="user-name">👋 Trường</div>
+        <div class="expire-date">⏳ Hạn dùng: 4 ngày</div>
       </div>
     </div>
-  </div>
+    <div class="header-title">DMHREELS - All In One Facebook</div>
+    <div style="width: 150px;"></div> <!-- Spacer -->
+  </header>
 
-  <!-- COOKIE -->
-  <div class="card">
-    <div class="section-title">🍪 Cookie Facebook</div>
-
-    <div class="ext-bar" style="margin-bottom:14px">
-      <span class="ext-status" id="extStatus">🔌 Đang kiểm tra extension...</span>
-      <button class="btn-get-cookie" id="btnGetCookie">Lấy Cookie từ Extension</button>
-    </div>
-
-    <div class="form-group">
-      <label>Cookie String</label>
-      <div class="cookie-row">
-        <input type="text" id="cookieInput" placeholder="Dán cookie vào đây hoặc lấy từ extension...">
-        <button class="btn-paste" id="btnPasteCookie">📋 Dán</button>
-      </div>
-    </div>
-
-    <div class="form-group" style="margin-bottom:0">
-      <label>UID Facebook (c_user)</label>
-      <input type="text" id="uidDisplay" readonly placeholder="Sẽ tự động điền khi có cookie..." style="color:#34d399">
-    </div>
-  </div>
-
-  <!-- POST TABS -->
-  <div class="card">
-    <div class="tabs">
-      <div class="tab active" data-tab="post">📝 Đăng Bài Viết</div>
-      <div class="tab" data-tab="reels">🎬 Đăng Reels</div>
-    </div>
-
-    <!-- POST -->
-    <div class="post-section active" id="tab-post">
-      <div class="section-title">Nội dung bài viết</div>
-
-      <div class="form-group">
-        <label>ID Trang/Nhóm (để trống = đăng tường cá nhân)</label>
-        <input type="text" id="postPageId" placeholder="VD: 123456789">
-      </div>
-
-      <div class="form-group">
-        <label>Nội dung bài viết</label>
-        <textarea id="postContent" placeholder="Nhập nội dung bài viết..."></textarea>
-      </div>
-
-      <div class="form-group">
-        <label>Link hình ảnh (mỗi link một dòng, để trống nếu không có)</label>
-        <textarea id="postImages" style="height:60px" placeholder="https://example.com/image.jpg"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label>Chế độ đăng</label>
-        <select id="postPrivacy">
-          <option value="EVERYONE">🌍 Công khai</option>
-          <option value="FRIENDS">👥 Bạn bè</option>
-          <option value="ONLY_ME">🔒 Chỉ mình tôi</option>
+  <!-- NỘI DUNG CHÍNH -->
+  <div class="container">
+    <div class="card">
+      <table id="pageTable">
+        <thead>
+          <tr>
+            <th style="width: 50px;"><input type="checkbox" id="checkAll"></th>
+            <th style="width: 60px;">STT</th>
+            <th>ID Page</th>
+            <th style="text-align: left;">Avatar / Tên Page</th>
+            <th>Đăng</th>
+            <th>Trạng thái tool</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="row-check"></td>
+            <td>1</td>
+            <td>930755460121224</td>
+            <td>
+              <div class="page-info">
+                <img src="https://ui-avatars.com/api/?name=P+N&background=0D8ABC&color=fff" alt="Avatar">
+                <span class="page-name">Pin NLMT Thanh Lý</span>
+                <span class="badge">💬 20</span>
+              </div>
+            </td>
+            <td>Hiện</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check" checked></td>
+            <td>2</td>
+            <td>879784155223944</td>
+            <td>
+              <div class="page-info">
+                <img src="https://ui-avatars.com/api/?name=T+A&background=F44336&color=fff" alt="Avatar">
+                <span class="page-name">Tâm An</span>
+                <span class="badge">💬 17</span>
+              </div>
+            </td>
+            <td>Hiện</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check"></td>
+            <td>3</td>
+            <td>2177273855659801</td>
+            <td>
+              <div class="page-info">
+                <img src="https://ui-avatars.com/api/?name=T+Q&background=4CAF50&color=fff" alt="Avatar">
+                <span class="page-name">Trần Quý Trường</span>
+                <span class="badge">💬 17</span>
+              </div>
+            </td>
+            <td>Hiện</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="row-check" checked></td>
+            <td>4</td>
+            <td>950708991468083</td>
+            <td>
+              <div class="page-info">
+                <img src="https://ui-avatars.com/api/?name=P+C&background=9C27B0&color=fff" alt="Avatar">
+                <span class="page-name">Tự Biud PC Gaming</span>
+                <span class="badge">💬 19</span>
+              </div>
+            </td>
+            <td>Hiện</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div class="table-footer">
+        Hiển thị: 
+        <select>
+          <option>20 dòng</option>
+          <option>50 dòng</option>
         </select>
+        <span>Tổng: 4 bản ghi</span>
       </div>
-
-      <button class="btn-post" id="btnPost">🚀 Đăng Bài Ngay</button>
-    </div>
-
-    <!-- REELS -->
-    <div class="post-section" id="tab-reels">
-      <div class="section-title">Thông tin Reels</div>
-
-      <div class="form-group">
-        <label>ID Trang Facebook (bắt buộc cho Reels)</label>
-        <input type="text" id="reelsPageId" placeholder="VD: 123456789">
-      </div>
-
-      <div class="form-group">
-        <label>Link video Reels (URL trực tiếp .mp4)</label>
-        <input type="text" id="reelsVideoUrl" placeholder="https://example.com/video.mp4">
-      </div>
-
-      <div class="form-group">
-        <label>Mô tả Reels</label>
-        <textarea id="reelsDescription" placeholder="Nhập mô tả cho Reels..."></textarea>
-      </div>
-
-      <button class="btn-post" id="btnReels">🎬 Đăng Reels Ngay</button>
     </div>
   </div>
 
-  <!-- LOG -->
-  <div class="card">
-    <div class="section-title">📋 Nhật ký hoạt động</div>
-    <div class="log-box" id="logBox">
-      <div class="log-empty">Chưa có hoạt động nào...</div>
+  <!-- CONTEXT MENU (Menu chuột phải) -->
+  <div id="contextMenu" class="context-menu">
+    <div class="menu-item">🔄 Tải lại dữ liệu</div>
+    <div class="menu-item">📚 Thư viện nhóm</div>
+    <div class="menu-item">⚙️ Cấu hình AI</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item has-submenu">
+      <span>🛠️ Tính năng page</span>
+      <span>▶</span>
+      <div class="submenu">
+        <div class="menu-item">📸 Đăng Story (Ảnh) <span class="page-count">(0) Trang</span></div>
+        <div class="menu-item">🎥 Đăng Story (Video) <span class="page-count">(0) Trang</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" id="btnOpenReelsModal"><b>🎬 Đăng Reels <span class="page-count">(0) Trang</span> Ver3</b></div>
+        <div class="menu-item">📝 Đăng Bài Viết <span class="page-count">(0) Trang</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-item">🌍 Cài giới hạn quốc gia <span class="page-count">(0) Trang</span></div>
+        <div class="menu-item">👑 Mời Quản Trị Viên <span class="page-count">(0) Trang</span></div>
+      </div>
     </div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="menu-item has-submenu">
+      <span>👥 Tính năng nhóm</span>
+      <span>▶</span>
+    </div>
   </div>
 
-</div>
+  <!-- MODAL ĐĂNG REELS VER 3 -->
+  <div id="reelsModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Đăng Reels (Ver 3)</h2>
+        <button class="close-btn" id="btnCloseModal">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Cột Trái -->
+        <div class="col-left">
+          <div class="form-group">
+            <div class="flex-row-between" style="margin-bottom: 5px;">
+              <label style="margin:0;">Nội dung bài viết:</label>
+              <label class="checkbox-label"><input type="checkbox"> <span class="ai-badge">🤖 AI Viết</span></label>
+            </div>
+            <textarea placeholder="Nhập nội dung... (Hỗ trợ spin content {a|b|c})"></textarea>
+          </div>
 
-<script>
-  // ===========================
-  // EXTENSION BRIDGE
-  // ===========================
-  let fbCookies = '';
+          <div class="flex-row" style="margin-bottom: 15px; align-items: flex-end;">
+            <div class="form-group" style="flex: 1; margin: 0;">
+              <label>Chọn Video:</label>
+              <div class="file-input-wrapper">
+                <button class="file-btn" onclick="document.getElementById('videoFile').click()">Chọn tệp</button>
+                <div class="file-text">Không có tệp nào được chọn</div>
+                <input type="file" id="videoFile" style="display:none" accept="video/mp4,video/x-m4v,video/*">
+              </div>
+              <div style="font-size: 11px; color: #888; margin-top: 3px;">Chưa chọn video</div>
+            </div>
+            <div class="form-group" style="width: 80px; margin: 0;">
+              <label>Song song:</label>
+              <input type="number" value="5">
+            </div>
+          </div>
 
-  // Kiểm tra extension có được cài không
-  function checkExtension() {
-    const status = document.getElementById('extStatus');
-    window.postMessage({ type: 'GET_FB_COOKIES' }, '*');
+          <div class="flex-row" style="background: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 15px;">
+            <label class="checkbox-label"><input type="checkbox"> Comments sau</label>
+            <input type="number" class="inline-input" value="90"> <span>giây</span>
+            <label class="checkbox-label" style="margin-left: 20px;"><input type="checkbox"> <span class="ai-badge">🤖 AI Viết</span></label>
+          </div>
 
-    setTimeout(() => {
-      if (!fbCookies) {
-        status.textContent = '⚠️ Extension chưa cài hoặc chưa đăng nhập FB';
-        status.className = 'ext-status err';
-      }
-    }, 2000);
-  }
+          <div class="form-group">
+            <label>Thứ tự đăng:</label>
+            <select>
+              <option>Từ A tới Z</option>
+              <option>Từ Z tới A</option>
+              <option>Ngẫu nhiên</option>
+            </select>
+          </div>
+        </div>
 
-  // Lắng nghe phản hồi từ bridge.js
-  window.addEventListener('message', (event) => {
-    if (event.data.type === 'FB_COOKIES_RESPONSE') {
-      const status = document.getElementById('extStatus');
-      if (event.data.success && event.data.cookie_string) {
-        fbCookies = event.data.cookie_string;
-        document.getElementById('cookieInput').value = fbCookies;
-        status.textContent = '✅ Extension đã kết nối — Cookie đã lấy!';
-        status.className = 'ext-status ok';
+        <!-- Cột Phải -->
+        <div class="col-right">
+          <div class="form-group">
+            <label class="checkbox-label" style="margin-bottom: 10px;"><input type="checkbox"> Lên lịch đăng</label>
+            <label class="checkbox-label" style="margin-bottom: 20px;"><input type="checkbox" checked> Tên file video làm tiêu đề</label>
+          </div>
 
-        // Hiển thị UID
-        const cUser = event.data.cookies?.find(c => c.name === 'c_user');
-        if (cUser) document.getElementById('uidDisplay').value = cUser.value;
-        log('✅ Đã lấy cookie từ extension thành công!', 'ok');
-      } else {
-        status.textContent = '❌ Chưa đăng nhập Facebook';
-        status.className = 'ext-status err';
-      }
+          <div class="flex-row">
+            <div class="form-group" style="flex: 1;">
+              <label>Delay Min(s):</label>
+              <input type="number" value="3">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label>Delay Max(s):</label>
+              <input type="number" value="5">
+            </div>
+            <div class="form-group" style="flex: 1.5;">
+              <label>Giới hạn số bài/1 page:</label>
+              <input type="number" value="1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <label class="checkbox-label" style="color: #ea4335; font-weight: bold;"><input type="checkbox"> ⏰ Hẹn Giờ</label>
+        <button class="btn-submit" id="btnSubmitReels">Bắt đầu đăng Reels <span class="btn-page-count">(0 trang)</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ================= XỬ LÝ CHECKBOX BẢNG =================
+    const checkAll = document.getElementById('checkAll');
+    const rowChecks = document.querySelectorAll('.row-check');
+    
+    function updateSelectedCount() {
+      const count = document.querySelectorAll('.row-check:checked').length;
+      document.querySelectorAll('.page-count').forEach(el => el.textContent = `(${count}) Trang`);
+      document.querySelector('.btn-page-count').textContent = `(${count} trang)`;
     }
-  });
 
-  document.getElementById('btnGetCookie').addEventListener('click', () => {
-    window.postMessage({ type: 'GET_FB_COOKIES' }, '*');
-    log('🔌 Đang yêu cầu cookie từ extension...', 'info');
-  });
-
-  document.getElementById('btnPasteCookie').addEventListener('click', async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      document.getElementById('cookieInput').value = text;
-      fbCookies = text;
-
-      // Parse c_user từ cookie string
-      const match = text.match(/c_user=(\d+)/);
-      if (match) document.getElementById('uidDisplay').value = match[1];
-      log('📋 Đã dán cookie thủ công', 'info');
-    } catch { alert('Không thể dán. Hãy dán thủ công bằng Ctrl+V.'); }
-  });
-
-  // Sync cookie input với biến fbCookies
-  document.getElementById('cookieInput').addEventListener('input', (e) => {
-    fbCookies = e.target.value;
-    const match = fbCookies.match(/c_user=(\d+)/);
-    if (match) document.getElementById('uidDisplay').value = match[1];
-  });
-
-  // ===========================
-  // TABS
-  // ===========================
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.post-section').forEach(s => s.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    checkAll.addEventListener('change', (e) => {
+      rowChecks.forEach(cb => cb.checked = e.target.checked);
+      updateSelectedCount();
     });
-  });
 
-  // ===========================
-  // LOG
-  // ===========================
-  function log(msg, type = 'info') {
-    const box = document.getElementById('logBox');
-    const empty = box.querySelector('.log-empty');
-    if (empty) empty.remove();
-    const line = document.createElement('div');
-    line.className = 'log-' + type;
-    line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-    box.appendChild(line);
-    box.scrollTop = box.scrollHeight;
-  }
+    rowChecks.forEach(cb => {
+      cb.addEventListener('change', () => {
+        const allChecked = Array.from(rowChecks).every(c => c.checked);
+        checkAll.checked = allChecked;
+        updateSelectedCount();
+      });
+    });
 
-  // ===========================
-  // ĐĂNG BÀI
-  // ===========================
-  document.getElementById('btnPost').addEventListener('click', async () => {
-    const cookie = document.getElementById('cookieInput').value.trim();
-    const content = document.getElementById('postContent').value.trim();
-    const pageId = document.getElementById('postPageId').value.trim();
-    const privacy = document.getElementById('postPrivacy').value;
+    // Cập nhật số lượng ban đầu khi load trang
+    updateSelectedCount();
 
-    if (!cookie) { alert('Vui lòng nhập hoặc lấy cookie Facebook!'); return; }
-    if (!content) { alert('Vui lòng nhập nội dung bài viết!'); return; }
+    // ================= XỬ LÝ MENU CHUỘT PHẢI =================
+    const contextMenu = document.getElementById('contextMenu');
+    const tbody = document.querySelector('tbody');
 
-    const btn = document.getElementById('btnPost');
-    btn.disabled = true; btn.textContent = '⏳ Đang đăng...';
-    log('📝 Bắt đầu đăng bài...', 'info');
-    setProgress(30);
+    tbody.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      // Nếu click vào một hàng chưa được check, tự động check hàng đó
+      const tr = e.target.closest('tr');
+      if(tr) {
+        const checkbox = tr.querySelector('.row-check');
+        if(!checkbox.checked) {
+            // Tuỳ chọn: Bỏ check các dòng khác và chỉ check dòng này, 
+            // hoặc cứ để yên và tính theo số lượng đang check. Ở đây mình giữ nguyên logic đếm tổng số checkbox đã tick.
+        }
+      }
 
-    try {
-      // Parse fb_dtsg từ cookie hoặc lấy từ trang Facebook
-      // Đây là logic demo — thực tế cần lấy fb_dtsg token từ trang FB
-      const uid = document.getElementById('uidDisplay').value;
-      if (!uid) throw new Error('Không tìm thấy UID. Vui lòng kiểm tra cookie.');
+      updateSelectedCount();
+      
+      contextMenu.style.display = 'block';
+      // Tránh menu bị tràn màn hình
+      const menuWidth = contextMenu.offsetWidth;
+      const menuHeight = contextMenu.offsetHeight;
+      let posX = e.pageX;
+      let posY = e.pageY;
+      
+      if (posX + menuWidth > window.innerWidth) posX = window.innerWidth - menuWidth - 10;
+      if (posY + menuHeight > window.innerHeight) posY = window.innerHeight - menuHeight - 10;
 
-      // Demo: hiển thị thông tin sẽ đăng
-      // Trong thực tế bạn cần gọi API Facebook Graph hoặc endpoint nội bộ
-      setProgress(80);
-      log(`✅ Demo: Sẽ đăng lên ${pageId ? 'Trang ' + pageId : 'Tường cá nhân ' + uid}`, 'ok');
-      log(`📄 Nội dung: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`, 'ok');
-      log(`🔒 Chế độ: ${privacy}`, 'info');
-      log('ℹ️ Tích hợp API Facebook thực tế cần fb_dtsg token — xem hướng dẫn bên dưới', 'info');
-      setProgress(100);
+      contextMenu.style.left = posX + 'px';
+      contextMenu.style.top = posY + 'px';
+    });
 
-    } catch(e) {
-      log('❌ Lỗi: ' + e.message, 'err');
-      setProgress(0);
-    } finally {
-      btn.disabled = false; btn.textContent = '🚀 Đăng Bài Ngay';
-    }
-  });
+    // Ẩn menu khi click ra ngoài
+    document.addEventListener('click', (e) => {
+      if (e.button !== 2) {
+        contextMenu.style.display = 'none';
+      }
+    });
 
-  // ===========================
-  // ĐĂNG REELS
-  // ===========================
-  document.getElementById('btnReels').addEventListener('click', async () => {
-    const cookie = document.getElementById('cookieInput').value.trim();
-    const pageId = document.getElementById('reelsPageId').value.trim();
-    const videoUrl = document.getElementById('reelsVideoUrl').value.trim();
-    const desc = document.getElementById('reelsDescription').value.trim();
+    // ================= XỬ LÝ MODAL =================
+    const modal = document.getElementById('reelsModal');
+    const btnOpenModal = document.getElementById('btnOpenReelsModal');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+    const btnSubmit = document.getElementById('btnSubmitReels');
 
-    if (!cookie) { alert('Vui lòng nhập hoặc lấy cookie Facebook!'); return; }
-    if (!pageId) { alert('Vui lòng nhập ID Trang Facebook!'); return; }
-    if (!videoUrl) { alert('Vui lòng nhập link video!'); return; }
+    btnOpenModal.addEventListener('click', () => {
+      const count = document.querySelectorAll('.row-check:checked').length;
+      if (count === 0) {
+        alert("Vui lòng chọn ít nhất 1 Page để đăng!");
+        return;
+      }
+      modal.style.display = 'flex';
+      contextMenu.style.display = 'none';
+    });
 
-    const btn = document.getElementById('btnReels');
-    btn.disabled = true; btn.textContent = '⏳ Đang xử lý...';
-    log('🎬 Bắt đầu đăng Reels...', 'info');
-    setProgress(20);
+    btnCloseModal.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
 
-    try {
-      const uid = document.getElementById('uidDisplay').value;
-      if (!uid) throw new Error('Không tìm thấy UID. Vui lòng kiểm tra cookie.');
+    // Xử lý nút hiển thị tên file
+    document.getElementById('videoFile').addEventListener('change', function() {
+      const textDisplay = this.parentElement.querySelector('.file-text');
+      if (this.files && this.files.length > 0) {
+        textDisplay.textContent = this.files[0].name;
+      } else {
+        textDisplay.textContent = 'Không có tệp nào được chọn';
+      }
+    });
 
-      setProgress(70);
-      log(`✅ Demo: Sẽ đăng Reels lên Trang ${pageId}`, 'ok');
-      log(`🎥 Video: ${videoUrl.substring(0, 60)}...`, 'ok');
-      log(`📄 Mô tả: "${desc.substring(0, 50)}${desc.length > 50 ? '...' : ''}"`, 'ok');
-      log('ℹ️ Tích hợp Reels API thực tế cần access token — xem hướng dẫn', 'info');
-      setProgress(100);
+    // Click ra ngoài modal để đóng
+    window.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
 
-    } catch(e) {
-      log('❌ Lỗi: ' + e.message, 'err');
-      setProgress(0);
-    } finally {
-      btn.disabled = false; btn.textContent = '🎬 Đăng Reels Ngay';
-    }
-  });
-
-  function setProgress(pct) {
-    document.getElementById('progressFill').style.width = pct + '%';
-  }
-
-  // Khởi tạo
-  window.addEventListener('load', () => {
-    checkExtension();
-    log('🚀 Web Tool đã sẵn sàng!', 'info');
-  });
-</script>
+    // Nút Bắt đầu đăng
+    btnSubmit.addEventListener('click', () => {
+        const count = document.querySelectorAll('.row-check:checked').length;
+        btnSubmit.textContent = 'Đang tiến hành đăng...';
+        btnSubmit.style.background = '#fbbc05';
+        btnSubmit.style.color = '#000';
+        
+        setTimeout(() => {
+            alert(`Đã gửi lệnh đăng Reels lên ${count} Page thành công! (Đây là demo giao diện)`);
+            modal.style.display = 'none';
+            btnSubmit.innerHTML = `Bắt đầu đăng Reels <span class="btn-page-count">(${count} trang)</span>`;
+            btnSubmit.style.background = '';
+            btnSubmit.style.color = '';
+        }, 1500);
+    });
+  </script>
 </body>
 </html>
