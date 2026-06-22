@@ -430,6 +430,13 @@
                 <input type="number" id="commentDelay_${pageId}" value="90" style="width: 50px;">
                 <span>giây</span>
               </div>
+              <div class="form-group" style="margin-top: 14px;">
+                <label style="color: var(--warning);">Auto-reply người đã comment:</label>
+                <textarea id="autoReply_${pageId}" placeholder="Câu trả lời cố định cho mọi comment trên video của page này..."></textarea>
+                <label class="checkbox-label" style="margin-top: 6px;">
+                  <input type="checkbox" id="enableAutoReply_${pageId}"> Bật auto-reply (quét theo chu kỳ vòng lặp đăng bài)
+                </label>
+              </div>
             </div>
             <div>
               <label>Kho Video riêng cho page này:</label>
@@ -444,6 +451,7 @@
             <div class="page-card-progress" id="progressBar_${pageId}"></div>
           </div>
           <div class="page-card-status" id="status_${pageId}" style="display:none;"></div>
+          <div class="page-card-status" id="replyStatus_${pageId}" style="display:none;"></div>
         `;
         wrap.appendChild(card);
 
@@ -454,7 +462,7 @@
             : 'Chưa có video nào được chọn';
         });
 
-        pageLoops[pageId] = { active: false, timeoutId: null };
+        pageLoops[pageId] = { active: false, timeoutId: null, repliedCommentIds: new Set() };
       } else {
         stopPageLoop(pageId);
         delete pageLoops[pageId];
@@ -535,6 +543,10 @@
 
       if (!loop.active) return;
 
+      await replyToUnansweredComments(pageId);
+
+      if (!loop.active) return;
+
       const intervalMins = parseInt(document.getElementById('loopInterval').value) || 60;
       const statusEl = document.getElementById(`status_${pageId}`);
 
@@ -544,6 +556,68 @@
       setBadge(pageId, 'running', `Chờ ${intervalMins}p`);
 
       loop.timeoutId = setTimeout(() => triggerNextPostForPage(pageId), intervalMins * 60 * 1000);
+    }
+
+    // ================= AUTO-REPLY COMMENT (QUÉT TOÀN BỘ VIDEO CỦA PAGE, CẢ CŨ VÀ MỚI) =================
+    // Dùng repliedCommentIds trong pageLoops để không trả lời trùng 1 comment 2 lần qua các chu kỳ.
+    async function replyToUnansweredComments(pageId) {
+      const loop = pageLoops[pageId];
+      const page = currentPages.find(p => p.id === pageId);
+      const enableAutoReply = document.getElementById(`enableAutoReply_${pageId}`).checked;
+      const replyMessage = document.getElementById(`autoReply_${pageId}`).value.trim();
+      const replyStatusEl = document.getElementById(`replyStatus_${pageId}`);
+
+      if (!enableAutoReply || !replyMessage) return;
+
+      replyStatusEl.style.display = 'block';
+      replyStatusEl.className = 'page-card-status show loading';
+      replyStatusEl.innerHTML = `💬 Đang quét comment chưa trả lời trên các video của <b>${page.name}</b>...`;
+
+      try {
+        // Lấy toàn bộ video của page (cũ + mới), không chỉ video vừa đăng lượt này
+        const videosRes = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${page.id}/videos?fields=id&limit=50&access_token=${page.access_token}`);
+        const videosData = await videosRes.json();
+        if (videosData.error) throw new Error(videosData.error.message);
+
+        const videoIds = (videosData.data || []).map(v => v.id);
+        let repliedCount = 0;
+
+        for (const videoId of videoIds) {
+          if (!loop.active) return;
+
+          const commentsRes = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${videoId}/comments?fields=id,from&filter=stream&limit=100&access_token=${page.access_token}`);
+          const commentsData = await commentsRes.json();
+          if (commentsData.error) continue; // Video lỗi quyền đọc comment thì bỏ qua, không chặn cả vòng quét
+
+          for (const comment of (commentsData.data || [])) {
+            if (!loop.active) return;
+            if (loop.repliedCommentIds.has(comment.id)) continue;
+
+            const replyRes = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${comment.id}/comments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: replyMessage, access_token: page.access_token })
+            });
+            const replyData = await replyRes.json();
+
+            if (!replyData.error) {
+              loop.repliedCommentIds.add(comment.id);
+              repliedCount++;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1200)); // Né rate limit, không spam liên tiếp
+          }
+        }
+
+        replyStatusEl.className = 'page-card-status show ok';
+        replyStatusEl.innerHTML = repliedCount > 0
+          ? `✅ Đã auto-reply <b>${repliedCount}</b> comment mới trên ${videoIds.length} video.`
+          : `✅ Đã quét ${videoIds.length} video — không có comment mới cần trả lời.`;
+
+      } catch (err) {
+        replyStatusEl.className = 'page-card-status show err';
+        replyStatusEl.textContent = `❌ Lỗi auto-reply (${page.name}): ${err.message}`;
+      }
     }
 
     // ================= QUY TRÌNH ĐĂNG 1 BÀI & CƠ CHẾ COMMENT (THEO TỪNG PAGE) =================
