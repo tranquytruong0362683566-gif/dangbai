@@ -640,28 +640,34 @@
         if (text) replyStatusEl.innerHTML = `💬 ${text}`;
       };
 
-      try {
-        setReplyProgress(2, 'Đang lấy danh sách video (toàn bộ, có phân trang)...');
+      // Giới hạn cứng: chỉ quét tối đa 50 video gần nhất mỗi lượt để tránh rate limit Facebook
+      const MAX_VIDEOS_PER_SCAN = 50;
+      // Giới hạn cứng: tối đa 30 reply mỗi lượt quét để tránh bị Facebook chặn
+      const MAX_REPLIES_PER_SCAN = 30;
 
-        // Lấy TOÀN BỘ video của page (cũ + mới) bằng pagination — không giới hạn 1 trang
-        // Facebook trả tối đa ~100/trang dù limit cao hơn, nên phải đi theo paging.next tới khi hết
+      try {
+        setReplyProgress(2, `Đang lấy danh sách video gần nhất (tối đa ${MAX_VIDEOS_PER_SCAN})...`);
+
+        // Chỉ lấy video gần nhất, không phân trang toàn bộ để tránh rate limit
         const videoIds = [];
-        let nextUrl = `https://graph.facebook.com/${GRAPH_VERSION}/${page.id}/videos?fields=id&limit=100&access_token=${page.access_token}`;
+        let nextUrl = `https://graph.facebook.com/${GRAPH_VERSION}/${page.id}/videos?fields=id&limit=25&access_token=${page.access_token}`;
         let pageCount = 0;
 
-        while (nextUrl) {
+        while (nextUrl && videoIds.length < MAX_VIDEOS_PER_SCAN) {
           if (!loop.replyActive) return;
           pageCount++;
-          setReplyProgress(Math.min(2 + pageCount, 10), `Đang tải trang video thứ ${pageCount} (đã có ${videoIds.length} video)...`);
+          setReplyProgress(Math.min(2 + pageCount * 2, 10), `Đang tải video (đã có ${videoIds.length})...`);
 
           const videosRes = await fetch(nextUrl);
           const videosData = await videosRes.json();
           if (videosData.error) throw new Error(videosData.error.message);
 
           videoIds.push(...(videosData.data || []).map(v => v.id));
-          nextUrl = (videosData.paging && videosData.paging.next) ? videosData.paging.next : null;
+          // Dừng phân trang khi đã đủ giới hạn
+          nextUrl = (videosData.paging && videosData.paging.next && videoIds.length < MAX_VIDEOS_PER_SCAN)
+            ? videosData.paging.next : null;
 
-          if (nextUrl) await new Promise(resolve => setTimeout(resolve, 300)); // né rate limit giữa các trang
+          if (nextUrl) await new Promise(resolve => setTimeout(resolve, 800)); // tăng delay lên 800ms
         }
         let repliedCount = 0;
         let skippedOwn = 0;
@@ -688,8 +694,9 @@
             if (commentsData.error) break; // Video lỗi quyền đọc comment thì bỏ qua, không chặn cả vòng quét
 
             videoComments.push(...(commentsData.data || []));
-            nextCommentsUrl = (commentsData.paging && commentsData.paging.next) ? commentsData.paging.next : null;
-            if (nextCommentsUrl) await new Promise(resolve => setTimeout(resolve, 300));
+            // Chỉ lấy 1 trang comment (100 comment) mỗi video, không phân trang để tránh rate limit
+            nextCommentsUrl = null;
+            if (nextCommentsUrl) await new Promise(resolve => setTimeout(resolve, 800));
           }
 
           const comments = videoComments;
@@ -725,9 +732,14 @@
               repliedCount++;
             }
 
-            await new Promise(resolve => setTimeout(resolve, 1200)); // Né rate limit, không spam liên tiếp
-          }
-        }
+            await new Promise(resolve => setTimeout(resolve, 2000)); // tăng lên 2s để tránh rate limit
+
+            // Dừng sớm nếu đã reply đủ giới hạn trong lượt quét này
+            if (repliedCount >= MAX_REPLIES_PER_SCAN) break;
+          } // end for comment
+
+          if (repliedCount >= MAX_REPLIES_PER_SCAN) break; // thoát vòng lặp video khi đủ giới hạn
+        } // end for video
 
         setReplyProgress(100, 'Hoàn tất.');
         replyProgressWrap.className = 'page-card-progress-wrap';
@@ -736,6 +748,7 @@
         const summaryLines = [];
         if (repliedCount > 0) summaryLines.push(`✅ Đã auto-reply <b>${repliedCount}</b> comment mới`);
         else summaryLines.push(`✅ Không có comment mới nào cần trả lời`);
+        if (repliedCount >= MAX_REPLIES_PER_SCAN) summaryLines.push(`⚠️ Đã đạt giới hạn ${MAX_REPLIES_PER_SCAN} reply/lượt — lượt sau sẽ tiếp tục`);
         if (skippedOwn > 0) summaryLines.push(`⏭️ Bỏ qua <b>${skippedOwn}</b> comment của chính page`);
         if (skippedAlready > 0) summaryLines.push(`⏭️ Bỏ qua <b>${skippedAlready}</b> comment đã reply trước đó`);
         summaryLines.push(`📊 Tổng: ${totalComments} comment trên ${videoIds.length} video`);
