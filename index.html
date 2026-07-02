@@ -395,6 +395,74 @@
     .toast.warning { border-left-color: #f59e0b; }
     @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+
+
+    .builder-help {
+      color: var(--muted);
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .builder-toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .builder-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+      max-height: 220px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 8px;
+      background: var(--surface-soft);
+    }
+    .builder-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .builder-item strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .builder-item span {
+      display: block;
+      color: var(--subtle);
+      font-size: 11px;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .builder-item-actions { display: flex; gap: 6px; }
+    .builder-export {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    @media (max-width: 520px) {
+      .builder-toolbar { grid-template-columns: 1fr; }
+    }
+
     @media (max-width: 1120px) {
       .app-shell { grid-template-columns: 245px minmax(0, 1fr) 245px; padding: 18px; }
       .card { padding: 17px; }
@@ -422,7 +490,7 @@
       <section class="card templates-card" aria-labelledby="leftTplTitle">
         <div class="section-title">
           <span id="leftTplTitle">📦 Kho mẫu trái</span>
-          <button class="btn btn-soft btn-sm" id="btnAddTplLeft" type="button">Cách thêm</button>
+          <button class="btn btn-soft btn-sm" id="btnAddTplLeft" type="button">Quản lý mẫu</button>
         </div>
         <div class="tpl-list" id="tplListLeft" aria-live="polite"></div>
       </section>
@@ -530,7 +598,7 @@
       <section class="card templates-card" aria-labelledby="rightTplTitle">
         <div class="section-title">
           <span id="rightTplTitle">📦 Kho mẫu phải</span>
-          <button class="btn btn-soft btn-sm" id="btnAddTpl" type="button">Cách thêm</button>
+          <button class="btn btn-soft btn-sm" id="btnAddTpl" type="button">Quản lý mẫu</button>
         </div>
         <div class="tpl-list" id="tplList" aria-live="polite"></div>
       </section>
@@ -548,7 +616,7 @@
   <div class="modal-overlay" id="switchModal" role="dialog" aria-modal="true" aria-labelledby="switchTitle">
     <div class="modal modal-center">
       <h2 id="switchTitle">🔄 Đổi tài khoản Puter</h2>
-      <p>Bạn sẽ đăng xuất khỏi tài khoản hiện tại rồi đăng nhập tài khoản mới. Kho mẫu sản phẩm được lấy trực tiếp từ code web; lịch sử và bản nháp vẫn lưu riêng trên trình duyệt.</p>
+      <p>Bạn sẽ đăng xuất khỏi tài khoản hiện tại rồi đăng nhập tài khoản mới. Kho mẫu sản phẩm nằm trong file web. Bạn có thể sửa nhanh bằng form quản lý mẫu rồi tải file web mới.</p>
       <button class="btn btn-warning" id="btnConfirmSwitch" type="button" style="width:100%; margin-bottom:10px">Xác nhận đổi tài khoản</button>
       <button class="btn btn-muted" id="btnCancelSwitch" type="button" style="width:100%">Huỷ</button>
     </div>
@@ -646,7 +714,9 @@
 
     const state = {
       selectedTemplateKey: null,
-      managers: {}
+      managers: {},
+      builderSide: 'left',
+      builderEditingIndex: -1
     };
 
     function safeJsonParse(value, fallback) {
@@ -1037,6 +1107,277 @@ Chỉ trả về nội dung bình luận, không thêm tiêu đề, không giả
       if (!$$('.modal-overlay.show').length) document.body.style.overflow = '';
     }
 
+
+    function ensureTemplateBuilderModal() {
+      let modal = $('#templateBuilderModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'templateBuilderModal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'builderTitle');
+        modal.innerHTML = `
+          <div class="modal">
+            <h2 id="builderTitle">Quản lý mẫu sản phẩm</h2>
+            <div class="builder-help">
+              Điền mẫu tại đây để sửa nhanh kho mẫu. Sau khi xong, bấm “Tải file web đã cập nhật”, rồi upload file đó thay file index.html cũ.
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="builderSideSelect">Kho mẫu</label>
+                <select id="builderSideSelect">
+                  <option value="left">Kho mẫu trái</option>
+                  <option value="right">Kho mẫu phải</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="builderNameInput">Tên mẫu</label>
+                <input type="text" id="builderNameInput" maxlength="90" placeholder="VD: Đèn NLMT 300W">
+              </div>
+              <div class="form-group">
+                <label for="builderProductInput">Tên sản phẩm</label>
+                <input type="text" id="builderProductInput" maxlength="160" placeholder="VD: Đèn năng lượng mặt trời 300W">
+              </div>
+              <div class="form-group">
+                <label for="builderLinksInput">Danh sách link</label>
+                <textarea id="builderLinksInput" placeholder="Mỗi link một dòng"></textarea>
+              </div>
+            </div>
+            <div class="builder-toolbar">
+              <button class="btn btn-primary" id="builderSaveBtn" type="button">💾 Lưu vào kho mẫu</button>
+              <button class="btn btn-muted" id="builderNewBtn" type="button">+ Nhập mẫu mới</button>
+            </div>
+            <div class="builder-list" id="builderList" aria-live="polite"></div>
+            <div class="builder-export">
+              <button class="btn btn-warning" id="builderDownloadBtn" type="button">⬇️ Tải file web đã cập nhật</button>
+              <button class="btn btn-muted" id="builderCloseBtn" type="button">Đóng</button>
+            </div>
+          </div>`;
+        document.body.appendChild(modal);
+      }
+
+      els.templateBuilderModal = modal;
+      els.builderTitle = $('#builderTitle');
+      els.builderSideSelect = $('#builderSideSelect');
+      els.builderNameInput = $('#builderNameInput');
+      els.builderProductInput = $('#builderProductInput');
+      els.builderLinksInput = $('#builderLinksInput');
+      els.builderSaveBtn = $('#builderSaveBtn');
+      els.builderNewBtn = $('#builderNewBtn');
+      els.builderList = $('#builderList');
+      els.builderDownloadBtn = $('#builderDownloadBtn');
+      els.builderCloseBtn = $('#builderCloseBtn');
+
+      if (modal.dataset.ready === '1') return;
+      modal.dataset.ready = '1';
+
+      els.builderSideSelect.addEventListener('change', () => {
+        state.builderSide = els.builderSideSelect.value === 'right' ? 'right' : 'left';
+        clearBuilderForm(false);
+        renderBuilderList();
+      });
+      els.builderSaveBtn.addEventListener('click', saveBuilderTemplate);
+      els.builderNewBtn.addEventListener('click', () => clearBuilderForm(true));
+      els.builderDownloadBtn.addEventListener('click', downloadUpdatedHtml);
+      els.builderCloseBtn.addEventListener('click', () => closeModal(els.templateBuilderModal));
+      els.builderList.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-builder-action]');
+        if (!btn) return;
+        const index = Number(btn.dataset.index);
+        const action = btn.dataset.builderAction;
+        if (action === 'edit') editBuilderTemplate(index);
+        if (action === 'delete') deleteBuilderTemplate(index);
+      });
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeModal(modal);
+      });
+    }
+
+    function openTemplateBuilder(side = 'left') {
+      ensureTemplateBuilderModal();
+      state.builderSide = side === 'right' ? 'right' : 'left';
+      els.builderSideSelect.value = state.builderSide;
+      clearBuilderForm(false);
+      renderBuilderList();
+      openModal(els.templateBuilderModal);
+      requestAnimationFrame(() => els.builderNameInput.focus());
+    }
+
+    function getBuilderManager() {
+      return state.managers[state.builderSide];
+    }
+
+    function clearBuilderForm(focus = false) {
+      state.builderEditingIndex = -1;
+      if (!els.builderNameInput) return;
+      els.builderNameInput.value = '';
+      els.builderProductInput.value = '';
+      els.builderLinksInput.value = '';
+      els.builderSaveBtn.textContent = '💾 Lưu vào kho mẫu';
+      if (focus) els.builderNameInput.focus();
+    }
+
+    function renderBuilderList() {
+      const manager = getBuilderManager();
+      if (!manager || !els.builderList) return;
+      els.builderTitle.textContent = `Quản lý mẫu sản phẩm — ${manager.label}`;
+      els.builderList.replaceChildren();
+
+      if (!manager.items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'tpl-empty';
+        empty.textContent = 'Chưa có mẫu nào trong kho này.';
+        els.builderList.appendChild(empty);
+        return;
+      }
+
+      manager.items.forEach((tpl, index) => {
+        const row = document.createElement('div');
+        row.className = 'builder-item';
+
+        const info = document.createElement('div');
+        const name = document.createElement('strong');
+        name.textContent = tpl.name || `Mẫu ${index + 1}`;
+        const meta = document.createElement('span');
+        meta.textContent = `${tpl.product || 'Chưa có sản phẩm'} • ${parseLinks(tpl.links || '').valid.length} link`;
+        info.append(name, meta);
+
+        const actions = document.createElement('div');
+        actions.className = 'builder-item-actions';
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn btn-soft btn-sm';
+        editBtn.textContent = 'Sửa';
+        editBtn.dataset.builderAction = 'edit';
+        editBtn.dataset.index = String(index);
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn btn-danger btn-sm';
+        deleteBtn.textContent = 'Xóa';
+        deleteBtn.dataset.builderAction = 'delete';
+        deleteBtn.dataset.index = String(index);
+        actions.append(editBtn, deleteBtn);
+
+        row.append(info, actions);
+        els.builderList.appendChild(row);
+      });
+    }
+
+    function editBuilderTemplate(index) {
+      const manager = getBuilderManager();
+      const tpl = manager?.items[index];
+      if (!tpl) return;
+      state.builderEditingIndex = index;
+      els.builderNameInput.value = tpl.name || '';
+      els.builderProductInput.value = tpl.product || '';
+      els.builderLinksInput.value = tpl.links || '';
+      els.builderSaveBtn.textContent = '✅ Cập nhật mẫu';
+      els.builderNameInput.focus();
+    }
+
+    function deleteBuilderTemplate(index) {
+      const manager = getBuilderManager();
+      const tpl = manager?.items[index];
+      if (!manager || !tpl) return;
+      if (!confirm(`Xóa mẫu "${tpl.name || `Mẫu ${index + 1}`}" khỏi file web mới?`)) return;
+      manager.items.splice(index, 1);
+      if (state.selectedTemplateKey === `${manager.key}:${index}`) state.selectedTemplateKey = null;
+      manager.render();
+      renderBuilderList();
+      updateStats();
+      toast('Đã xóa mẫu khỏi bản đang chỉnh');
+    }
+
+    function saveBuilderTemplate() {
+      const manager = getBuilderManager();
+      if (!manager) return;
+
+      const name = els.builderNameInput.value.trim();
+      const product = els.builderProductInput.value.trim();
+      const links = els.builderLinksInput.value.trim();
+      const parsed = parseLinks(links);
+
+      if (!name) {
+        toast('Vui lòng nhập tên mẫu.', 'warning');
+        els.builderNameInput.focus();
+        return;
+      }
+      if (!product) {
+        toast('Vui lòng nhập tên sản phẩm.', 'warning');
+        els.builderProductInput.focus();
+        return;
+      }
+      if (links && !parsed.valid.length) {
+        toast('Danh sách link chưa có URL hợp lệ.', 'warning');
+        els.builderLinksInput.focus();
+        return;
+      }
+      if (parsed.invalid.length) {
+        toast(`Đã bỏ qua ${parsed.invalid.length} link chưa hợp lệ.`, 'warning');
+      }
+
+      const payload = {
+        name,
+        product,
+        links: parsed.valid.join('\n')
+      };
+
+      if (state.builderEditingIndex >= 0) manager.items[state.builderEditingIndex] = payload;
+      else manager.items.push(payload);
+
+      manager.render();
+      renderBuilderList();
+      clearBuilderForm(false);
+      updateStats();
+      toast('Đã lưu mẫu vào bản đang chỉnh. Nhớ tải file web mới để cập nhật thật.');
+    }
+
+    function getTemplatesForExport() {
+      return {
+        left: normalizeManualTemplates(state.managers.left?.items || []),
+        right: normalizeManualTemplates(state.managers.right?.items || [])
+      };
+    }
+
+    function buildManualTemplatesSource() {
+      const json = JSON.stringify(getTemplatesForExport(), null, 8)
+        .replace(/\n/g, '\n      ');
+      return `manualTemplates: ${json}`;
+    }
+
+    function downloadUpdatedHtml() {
+      try {
+        const clone = document.documentElement.cloneNode(true);
+        clone.querySelectorAll('.modal-overlay.show').forEach(item => item.classList.remove('show'));
+        const cloneBody = clone.querySelector('body');
+        if (cloneBody) cloneBody.style.overflow = '';
+
+        let html = '<!DOCTYPE html>\n' + clone.outerHTML;
+        const replacement = `${buildManualTemplatesSource()},\n      tokenErrorPatterns:`;
+        const pattern = /manualTemplates:\s*\{[\s\S]*?\n\s*\},\n\s*tokenErrorPatterns:/;
+        if (!pattern.test(html)) {
+          toast('Không tìm thấy vùng manualTemplates để cập nhật file.', 'error');
+          return;
+        }
+
+        html = html.replace(pattern, replacement);
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+        a.href = url;
+        a.download = `index_updated_${stamp}.html`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1200);
+        toast('Đã tải file web mới. Upload file này thay index.html cũ là xong.');
+      } catch (error) {
+        toast('Lỗi xuất file: ' + getErrorText(error), 'error');
+      }
+    }
+
     function normalizeManualTemplates(items) {
       return (Array.isArray(items) ? items : [])
         .map((tpl, index) => {
@@ -1054,8 +1395,7 @@ Chỉ trả về nội dung bình luận, không thêm tiêu đề, không giả
     }
 
     function showManualTemplateGuide(key, label) {
-      const path = `APP.manualTemplates.${key}`;
-      toast(`Muốn thêm/sửa ${label}: mở file HTML, tìm ${path}, nhập name/product/links rồi upload lại web.`, 'warning');
+      openTemplateBuilder(key);
     }
 
     function createTemplateManager({ key, listEl, label }) {
@@ -1102,13 +1442,20 @@ Chỉ trả về nội dung bình luận, không thêm tiêu đề, không giả
 
             const actions = document.createElement('div');
             actions.className = 'tpl-actions';
-            const applyBtn = document.createElement('button');
-            applyBtn.type = 'button';
-            applyBtn.className = 'btn btn-soft btn-icon';
-            applyBtn.textContent = '➜';
-            applyBtn.title = 'Áp dụng mẫu';
-            applyBtn.dataset.action = 'apply';
-            actions.append(applyBtn);
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'btn btn-soft btn-icon';
+            edit.textContent = '✏️';
+            edit.title = 'Sửa nhanh mẫu';
+            edit.dataset.action = 'edit';
+
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'btn btn-danger btn-icon';
+            del.textContent = '🗑️';
+            del.title = 'Xóa nhanh mẫu';
+            del.dataset.action = 'delete';
+            actions.append(edit, del);
 
             item.append(icon, info, actions);
             listEl.appendChild(item);
@@ -1137,7 +1484,20 @@ Chỉ trả về nội dung bình luận, không thêm tiêu đề, không giả
       listEl.addEventListener('click', (event) => {
         const item = event.target.closest('.tpl-item');
         if (!item) return;
-        manager.apply(Number(item.dataset.index));
+        const index = Number(item.dataset.index);
+        const action = event.target.closest('[data-action]')?.dataset.action;
+        if (action === 'edit') {
+          openTemplateBuilder(key);
+          editBuilderTemplate(index);
+          return;
+        }
+        if (action === 'delete') {
+          state.builderSide = key;
+          ensureTemplateBuilderModal();
+          deleteBuilderTemplate(index);
+          return;
+        }
+        manager.apply(index);
       });
 
       listEl.addEventListener('keydown', (event) => {
@@ -1182,7 +1542,10 @@ Chỉ trả về nội dung bình luận, không thêm tiêu đề, không giả
       });
 
       document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closeModal(els.switchModal);
+        if (event.key === 'Escape') {
+          closeModal(els.switchModal);
+          if (els.templateBuilderModal) closeModal(els.templateBuilderModal);
+        }
         if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
           event.preventDefault();
           generateComment();
